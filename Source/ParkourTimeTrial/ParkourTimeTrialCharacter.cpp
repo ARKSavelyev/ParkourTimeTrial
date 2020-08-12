@@ -82,6 +82,7 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
+	JumpHeight = 600.f;
 }
 
 void AParkourTimeTrialCharacter::BeginPlay()
@@ -114,7 +115,7 @@ void AParkourTimeTrialCharacter::SetupPlayerInputComponent(class UInputComponent
 	check(PlayerInputComponent);
 
 	// Bind jump events
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AParkourTimeTrialCharacter::DoubleJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	// Bind fire event
@@ -297,4 +298,18 @@ bool AParkourTimeTrialCharacter::EnableTouchscreenMovement(class UInputComponent
 	}
 	
 	return false;
+}
+
+void AParkourTimeTrialCharacter::Landed(const FHitResult& Hit)
+{
+	DoubleJumpCounter = 0;
+}
+
+void AParkourTimeTrialCharacter::DoubleJump()
+{
+	if (DoubleJumpCounter <= 1)
+	{
+		ACharacter::LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
+		DoubleJumpCounter++;
+	}
 }
