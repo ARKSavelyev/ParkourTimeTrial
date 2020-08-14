@@ -148,4 +148,28 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float JumpHeight;
+
+	UFUNCTION()
+		void Dash();
+
+	UFUNCTION()
+		void StopDashing();
+
+	UFUNCTION()
+		void ResetDash();
+	
+	UPROPERTY()
+		FTimerHandle UnusedHandle;
+	
+	UPROPERTY(EditAnywhere)
+		float DashDistance;
+
+	UPROPERTY(EditAnywhere)
+		float DashCooldown;
+
+	UPROPERTY(EditAnywhere)
+		bool CanDash;
+
+	UPROPERTY(EditAnywhere)
+		float DashStop;
 };
