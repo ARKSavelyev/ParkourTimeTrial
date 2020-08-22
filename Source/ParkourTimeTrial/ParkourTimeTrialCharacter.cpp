@@ -318,7 +318,7 @@ void AParkourTimeTrialCharacter::DoubleJump()
 {
 	if (DoubleJumpCounter <= 1)
 	{
-		ACharacter::LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
+		LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
 		DoubleJumpCounter++;
 	}
 }
@@ -328,7 +328,7 @@ void AParkourTimeTrialCharacter::Dash()
 	if (CanDash)
 	{
 		GetCharacterMovement()->BrakingFrictionFactor = 0.f;
-		LaunchCharacter(FVector(FirstPersonCameraComponent->GetForwardVector().X, FirstPersonCameraComponent->GetForwardVector().Y, 0 ).GetSafeNormal() * DashDistance, true, true);
+		LaunchCharacter(GetDirectionForDash() * DashDistance, true, true);
 		CanDash = false;
 		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AParkourTimeTrialCharacter::StopDashing, DashStop, false);
 	}
@@ -344,4 +344,13 @@ void AParkourTimeTrialCharacter::StopDashing()
 void AParkourTimeTrialCharacter::ResetDash()
 {
 	CanDash = true;
+}
+
+FVector AParkourTimeTrialCharacter::GetDirectionForDash()
+{
+	auto Velocity = GetCharacterMovement()->GetLastInputVector();
+	if (Velocity.IsNearlyZero())
+		return FVector(FirstPersonCameraComponent->GetForwardVector().X, FirstPersonCameraComponent->GetForwardVector().Y, 0).GetSafeNormal();
+	Velocity.Z = 0;
+	return Velocity.GetSafeNormal();
 }

@@ -118,8 +118,7 @@ protected:
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
-	
-protected:
+
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
@@ -172,4 +171,9 @@ public:
 
 	UPROPERTY(EditAnywhere)
 		float DashStop;
+
+private:
+	UFUNCTION()
+		FVector GetDirectionForDash();
+	
 };
