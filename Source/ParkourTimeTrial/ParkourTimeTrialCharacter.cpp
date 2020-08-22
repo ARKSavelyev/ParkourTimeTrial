@@ -26,7 +26,7 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
-	BaseLookUpRate = 45.f;
+	BaseLookUpRate = 45.f; 
 
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
@@ -85,6 +85,7 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 	JumpHeight = 600.f;
+	GetCharacterMovement()->AirControl = 0.5f;
 	CanDash = true;
 	DashDistance = 6000.f;
 	DashCooldown = 2.f;
