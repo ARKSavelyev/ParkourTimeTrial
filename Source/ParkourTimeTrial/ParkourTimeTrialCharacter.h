@@ -118,8 +118,7 @@ protected:
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
-	
-protected:
+
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
@@ -148,4 +147,33 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float JumpHeight;
+
+	UFUNCTION()
+		void Dash();
+
+	UFUNCTION()
+		void StopDashing();
+
+	UFUNCTION()
+		void ResetDash();
+	
+	UPROPERTY()
+		FTimerHandle UnusedHandle;
+	
+	UPROPERTY(EditAnywhere)
+		float DashDistance;
+
+	UPROPERTY(EditAnywhere)
+		float DashCooldown;
+
+	UPROPERTY(EditAnywhere)
+		bool CanDash;
+
+	UPROPERTY(EditAnywhere)
+		float DashStop;
+
+private:
+	UFUNCTION()
+		FVector GetDirectionForDash();
+	
 };
