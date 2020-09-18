@@ -86,6 +86,8 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	//bUsingMotionControllers = true;
 	JumpHeight = 600.f;
 	GetCharacterMovement()->AirControl = 0.5f;
+	GetCharacterMovement()->MaxWalkSpeed = 750.0f;
+	//GetCharacterMovement()->MaxAcceleration = 800.0f;
 	CanDash = true;
 	DashDistance = 6000.f;
 	DashCooldown = 2.f;
