@@ -7,10 +7,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
-#include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include "Runtime/Engine/Public/TimerManager.h"
 
@@ -240,3 +238,22 @@ bool AParkourTimeTrialCharacter::IsSurfaceValidForWallRun(FVector surfaceNormal)
 	return angle < walkableFloor;
 }
 
+void AParkourTimeTrialCharacter::GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side)
+{
+	auto actorRightVector = GetActorRightVector();
+	auto surfaceNormal2D = FVector2D(surfaceNormal.X, surfaceNormal.Y);
+	auto actorRightVector2D = FVector2D(actorRightVector.X, actorRightVector.Y);
+	auto dotProduct = FVector2D::DotProduct(actorRightVector2D, surfaceNormal2D);
+	FVector Z;
+	if (dotProduct>0)
+	{
+		Side = EWallRunSide::Right;
+		Z = FVector(0,0,1);
+	}
+	else
+	{
+		Side = EWallRunSide::Left;
+		Z = FVector(0, 0, -1);
+	}
+	Direction = FVector::CrossProduct(surfaceNormal, Z);
+}

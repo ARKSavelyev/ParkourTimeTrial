@@ -8,6 +8,18 @@
 
 class UInputComponent;
 
+UENUM(BlueprintType)
+enum class EWallRunSide : uint8 {
+	Left       UMETA(DisplayName = "Left"),
+	Right      UMETA(DisplayName = "Right"),	
+};
+
+UENUM(BlueprintType)
+enum class EWallRunEndCause : uint8 {
+	Fall       UMETA(DisplayName = "Fell Off"),
+	Jump      UMETA(DisplayName = "Jumped Off"),
+};
+
 UCLASS(config=Game)
 class AParkourTimeTrialCharacter : public ACharacter
 {
@@ -138,5 +150,8 @@ private:
 		FVector GetDirectionForDash();
 
 	UFUNCTION()
-		bool IsSurfaceValidForWallRun();
+		bool IsSurfaceValidForWallRun(FVector surfaceNormal);
+
+	UFUNCTION()
+		void GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side);
 };
