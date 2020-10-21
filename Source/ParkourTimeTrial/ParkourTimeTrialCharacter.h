@@ -84,6 +84,11 @@ public:
 	UPROPERTY(EditAnywhere)
 		float DashStop;
 
+	UPROPERTY(EditAnywhere)
+		bool IsWallRunning;
+
+	float RegularAirControl = 0.5f;
+	float WallRunAirControl = 1.f;
 	
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
@@ -154,4 +159,13 @@ private:
 
 	UFUNCTION()
 		void GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side);
+
+	UFUNCTION()
+		void BeginWallRun();
+
+	UFUNCTION()
+		void EndWallRun(EWallRunEndCause endCause);
+
+	UFUNCTION()
+		bool CheckKeysAreDown(EWallRunSide& Side);
 };

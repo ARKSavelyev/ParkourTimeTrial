@@ -59,7 +59,7 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 	JumpHeight = 600.f;
-	GetCharacterMovement()->AirControl = 0.5f;
+	GetCharacterMovement()->AirControl = RegularAirControl;
 	GetCharacterMovement()->MaxWalkSpeed = 750.0f;
 	//GetCharacterMovement()->MaxAcceleration = 800.0f;
 	CanDash = true;
@@ -256,4 +256,36 @@ void AParkourTimeTrialCharacter::GetWallRunSideAndDirection(FVector surfaceNorma
 		Z = FVector(0, 0, -1);
 	}
 	Direction = FVector::CrossProduct(surfaceNormal, Z);
+}
+
+
+bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide& Side)
+{
+	auto forwardAxis = GetInputAxisValue("MoveForward");
+	auto rightAxis = GetInputAxisValue("MoveRight");
+	if (forwardAxis > 0.1)
+	{
+		if (Side == EWallRunSide::Right && rightAxis < -0.1)
+			return true;
+
+		if (Side == EWallRunSide::Left && rightAxis > 0.1)
+			return true;
+	}
+	return false;
+}
+
+void AParkourTimeTrialCharacter::BeginWallRun()
+{
+	GetCharacterMovement()->AirControl = WallRunAirControl;
+	GetCharacterMovement()->GravityScale = 0;
+	GetCharacterMovement()->SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
+	IsWallRunning = true;
+}
+
+void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
+{
+	GetCharacterMovement()->AirControl = RegularAirControl;
+	GetCharacterMovement()->GravityScale = 1;
+	GetCharacterMovement()->SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
+	IsWallRunning = false;
 }
