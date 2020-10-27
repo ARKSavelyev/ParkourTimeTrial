@@ -48,7 +48,7 @@ public:
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void DoubleJump();
 
 	UPROPERTY(EditAnywhere)
@@ -60,33 +60,39 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float JumpHeight;
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void Dash();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void StopDashing();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void ResetDash();
 
 	UPROPERTY()
 		FTimerHandle UnusedHandle;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DashDistance;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DashCooldown;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool CanDash;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DashStop;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool IsWallRunning;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FVector WallRunDirection;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		EWallRunSide WallRunSide;
+	
 	float RegularAirControl = 0.5f;
 	float WallRunAirControl = 1.f;
 	
@@ -150,22 +156,22 @@ protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
-private:
+
 	UFUNCTION()
 		FVector GetDirectionForDash();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		bool IsSurfaceValidForWallRun(FVector surfaceNormal);
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side);
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void BeginWallRun();
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void EndWallRun(EWallRunEndCause endCause);
 
-	UFUNCTION()
-		bool CheckKeysAreDown(EWallRunSide& Side);
+	UFUNCTION(BlueprintCallable)
+		bool CheckKeysAreDown(EWallRunSide Side);
 };

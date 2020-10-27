@@ -259,7 +259,7 @@ void AParkourTimeTrialCharacter::GetWallRunSideAndDirection(FVector surfaceNorma
 }
 
 
-bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide& Side)
+bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide Side)
 {
 	auto forwardAxis = GetInputAxisValue("MoveForward");
 	auto rightAxis = GetInputAxisValue("MoveRight");
