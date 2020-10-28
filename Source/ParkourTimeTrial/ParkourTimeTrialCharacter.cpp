@@ -189,6 +189,10 @@ void AParkourTimeTrialCharacter::DoubleJump()
 	{
 		LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
 		MultiJumpCounter++;
+		if (IsWallRunning)
+		{
+			EndWallRun(EWallRunEndCause::Jump);
+		}
 	}
 }
 
@@ -278,7 +282,7 @@ void AParkourTimeTrialCharacter::BeginWallRun()
 {
 	GetCharacterMovement()->AirControl = WallRunAirControl;
 	GetCharacterMovement()->GravityScale = 0;
-	GetCharacterMovement()->SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
+	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 1));//SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
 	IsWallRunning = true;
 }
 
@@ -286,6 +290,6 @@ void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
 {
 	GetCharacterMovement()->AirControl = RegularAirControl;
 	GetCharacterMovement()->GravityScale = 1;
-	GetCharacterMovement()->SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
+	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 0));
 	IsWallRunning = false;
 }
