@@ -88,13 +88,19 @@ public:
 		bool IsWallRunning;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float RegularAirControl;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float WallRunAirControl;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		int WallRunJumpLaunchMultiplier;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		FVector WallRunDirection;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		EWallRunSide WallRunSide;
-	
-	float RegularAirControl = 0.5f;
-	float WallRunAirControl = 1.f;
 	
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)

@@ -67,6 +67,9 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	DashCooldown = 2.f;
 	DashStop = 0.1f;
 	MultiJumpMaximum = 2;
+	RegularAirControl = 0.5f;
+	WallRunAirControl = 1.f;
+	WallRunJumpLaunchMultiplier = 500;
 }
 
 void AParkourTimeTrialCharacter::BeginPlay()
@@ -187,12 +190,24 @@ void AParkourTimeTrialCharacter::DoubleJump()
 {
 	if (MultiJumpCounter <= MultiJumpMaximum)
 	{
-		LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
-		MultiJumpCounter++;
+		FVector crossDirection = FVector(0,0,0);
 		if (IsWallRunning)
 		{
 			EndWallRun(EWallRunEndCause::Jump);
+			FVector Z;
+			if (WallRunSide == EWallRunSide::Right)
+			{
+				Z = FVector(0,0,-1);
+			}
+			else
+			{
+				Z = FVector(0, 0, 1);
+			}
+			crossDirection = FVector::CrossProduct(WallRunDirection, Z);
+			crossDirection = crossDirection * WallRunJumpLaunchMultiplier;
 		}
+		LaunchCharacter(FVector(crossDirection.X, crossDirection.Y, JumpHeight), false, true);
+		MultiJumpCounter++;
 	}
 }
 
@@ -245,8 +260,8 @@ bool AParkourTimeTrialCharacter::IsSurfaceValidForWallRun(FVector surfaceNormal)
 void AParkourTimeTrialCharacter::GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side)
 {
 	auto actorRightVector = GetActorRightVector();
-	auto surfaceNormal2D = FVector2D(surfaceNormal.X, surfaceNormal.Y);
-	auto actorRightVector2D = FVector2D(actorRightVector.X, actorRightVector.Y);
+	auto surfaceNormal2D = FVector2D(surfaceNormal); 
+	auto actorRightVector2D = FVector2D(actorRightVector);
 	auto dotProduct = FVector2D::DotProduct(actorRightVector2D, surfaceNormal2D);
 	FVector Z;
 	if (dotProduct>0)
@@ -281,6 +296,7 @@ bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide Side)
 void AParkourTimeTrialCharacter::BeginWallRun()
 {
 	GetCharacterMovement()->AirControl = WallRunAirControl;
+	MultiJumpCounter = 0;
 	GetCharacterMovement()->GravityScale = 0;
 	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 1));//SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
 	IsWallRunning = true;
@@ -291,5 +307,9 @@ void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
 	GetCharacterMovement()->AirControl = RegularAirControl;
 	GetCharacterMovement()->GravityScale = 1;
 	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 0));
+	if (endCause == EWallRunEndCause::Fall)
+	{
+		MultiJumpCounter++;
+	}
 	IsWallRunning = false;
 }
