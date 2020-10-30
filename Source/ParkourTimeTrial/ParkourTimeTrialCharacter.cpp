@@ -70,6 +70,8 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	RegularAirControl = 0.5f;
 	WallRunAirControl = 1.f;
 	WallRunJumpLaunchMultiplier = 500;
+	WallRunTilt = 15.f;
+	WallRunTiltRate = 0.2f;
 }
 
 void AParkourTimeTrialCharacter::BeginPlay()
@@ -218,7 +220,7 @@ void AParkourTimeTrialCharacter::Dash()
 		GetCharacterMovement()->BrakingFrictionFactor = 0.f;
 		LaunchCharacter(GetDirectionForDash() * DashDistance, true, true);
 		CanDash = false;
-		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AParkourTimeTrialCharacter::StopDashing, DashStop, false);
+		GetWorldTimerManager().SetTimer(DashCountdownHandle, this, &AParkourTimeTrialCharacter::StopDashing, DashStop, false);
 	}
 }
 
@@ -226,7 +228,7 @@ void AParkourTimeTrialCharacter::StopDashing()
 {
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->BrakingFrictionFactor = 2.f;
-	GetWorldTimerManager().SetTimer(UnusedHandle, this, &AParkourTimeTrialCharacter::ResetDash, DashCooldown, false);
+	GetWorldTimerManager().SetTimer(DashCountdownHandle, this, &AParkourTimeTrialCharacter::ResetDash, DashCooldown, false);
 }
 
 void AParkourTimeTrialCharacter::ResetDash()
@@ -293,6 +295,62 @@ bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide Side)
 	return false;
 }
 
+void AParkourTimeTrialCharacter::PerformRotation()
+{
+	auto lerpResult = FMath::Lerp(CurrentRotation, WallRunTargetRotation, 0.05f);
+	CurrentRotation = lerpResult;
+	auto playerRotation = GetController()->GetControlRotation();
+	playerRotation.Roll = lerpResult;
+	GetController()->SetControlRotation(playerRotation);
+}
+
+void AParkourTimeTrialCharacter::RotateCharacter()
+{
+	if (WallRunSide == EWallRunSide::Left)
+	{
+		if ((IsWallRunning && CurrentRotation > WallRunTargetRotation) || (!IsWallRunning && CurrentRotation<WallRunTargetRotation))
+		{
+			PerformRotation();
+		}
+	}
+	else if (WallRunSide == EWallRunSide::Right)
+	{
+		if ((IsWallRunning && CurrentRotation < WallRunTargetRotation) || (!IsWallRunning && CurrentRotation > WallRunTargetRotation))
+		{
+			PerformRotation();
+		}
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().ClearTimer(CameraTiltHandle);
+	}
+}
+
+void AParkourTimeTrialCharacter::StartCameraRotation()
+{
+	const auto controller = GetController();
+	WallRunBeginRotation = controller->GetControlRotation().Roll;
+	CurrentRotation = WallRunBeginRotation;
+	int Multiplier;
+	if (WallRunSide == EWallRunSide::Right)
+	{
+		Multiplier = 1;
+	}
+	else
+	{
+		Multiplier = -1;
+	}
+	WallRunTargetRotation = CurrentRotation + Multiplier * WallRunTilt;
+	GetWorldTimerManager().SetTimer(CameraTiltHandle, this, &AParkourTimeTrialCharacter::RotateCharacter, 0.01f, true);
+}
+
+void AParkourTimeTrialCharacter::ReverseCameraRotation()
+{
+	CurrentRotation = WallRunTargetRotation;
+	WallRunTargetRotation = WallRunBeginRotation;
+	GetWorldTimerManager().SetTimer(CameraTiltHandle, this, &AParkourTimeTrialCharacter::RotateCharacter, 0.01f, true);
+}
+
 void AParkourTimeTrialCharacter::BeginWallRun()
 {
 	GetCharacterMovement()->AirControl = WallRunAirControl;
@@ -300,6 +358,7 @@ void AParkourTimeTrialCharacter::BeginWallRun()
 	GetCharacterMovement()->GravityScale = 0;
 	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 1));//SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
 	IsWallRunning = true;
+	StartCameraRotation();
 }
 
 void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
@@ -312,4 +371,5 @@ void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
 		MultiJumpCounter++;
 	}
 	IsWallRunning = false;
+	ReverseCameraRotation();
 }

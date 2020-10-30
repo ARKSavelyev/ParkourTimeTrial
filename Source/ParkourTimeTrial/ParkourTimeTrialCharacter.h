@@ -70,8 +70,11 @@ public:
 		void ResetDash();
 
 	UPROPERTY()
-		FTimerHandle UnusedHandle;
+		FTimerHandle DashCountdownHandle;
 
+	UPROPERTY()
+		FTimerHandle CameraTiltHandle;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float DashDistance;
 
@@ -101,6 +104,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		EWallRunSide WallRunSide;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float WallRunTilt;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float WallRunTiltRate;
 	
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
@@ -144,7 +153,7 @@ protected:
 	/** Handles moving forward/backward */
 	void MoveForward(float Val);
 
-	/** Handles stafing movement, left and right */
+	/** Handles strafing movement, left and right */
 	void MoveRight(float Val);
 
 	/**
@@ -180,4 +189,24 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 		bool CheckKeysAreDown(EWallRunSide Side);
+	void PerformRotation();
+
+private:
+	UFUNCTION()
+		void RotateCharacter();
+
+	UFUNCTION()
+		void StartCameraRotation();
+
+	UFUNCTION()
+		void ReverseCameraRotation();
+
+	UPROPERTY()
+		float WallRunBeginRotation;
+	
+	UPROPERTY()
+		float CurrentRotation;
+
+	UPROPERTY()
+		float WallRunTargetRotation;
 };
