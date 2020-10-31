@@ -59,6 +59,7 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 	JumpHeight = 600.f;
+	RegularAirControl = 0.5f;
 	GetCharacterMovement()->AirControl = RegularAirControl;
 	GetCharacterMovement()->MaxWalkSpeed = 750.0f;
 	//GetCharacterMovement()->MaxAcceleration = 800.0f;
@@ -67,7 +68,6 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	DashCooldown = 2.f;
 	DashStop = 0.1f;
 	MultiJumpMaximum = 2;
-	RegularAirControl = 0.5f;
 	WallRunAirControl = 1.f;
 	WallRunJumpLaunchMultiplier = 500;
 	WallRunTilt = 15.f;
