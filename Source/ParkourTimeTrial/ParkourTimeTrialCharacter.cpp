@@ -7,10 +7,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
-#include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include "Runtime/Engine/Public/TimerManager.h"
 
@@ -58,40 +56,22 @@ AParkourTimeTrialCharacter::AParkourTimeTrialCharacter()
 	// Default offset from the character location for projectiles to spawn
 	GunOffset = FVector(100.0f, 0.0f, 10.0f);
 
-	// Note: The ProjectileClass and the skeletal mesh/anim blueprints for Mesh1P, FP_Gun, and VR_Gun 
-	// are set in the derived blueprint asset named MyCharacter to avoid direct content references in C++.
-
-	// Create VR Controllers.
-	R_MotionController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("R_MotionController"));
-	R_MotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
-	R_MotionController->SetupAttachment(RootComponent);
-	L_MotionController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("L_MotionController"));
-	L_MotionController->SetupAttachment(RootComponent);
-
-	// Create a gun and attach it to the right-hand VR controller.
-	// Create a gun mesh component
-	VR_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("VR_Gun"));
-	VR_Gun->SetOnlyOwnerSee(true);			// only the owning player will see this mesh
-	VR_Gun->bCastDynamicShadow = false;
-	VR_Gun->CastShadow = false;
-	VR_Gun->SetupAttachment(R_MotionController);
-	VR_Gun->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-
-	VR_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("VR_MuzzleLocation"));
-	VR_MuzzleLocation->SetupAttachment(VR_Gun);
-	VR_MuzzleLocation->SetRelativeLocation(FVector(0.000004, 53.999992, 10.000000));
-	VR_MuzzleLocation->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));		// Counteract the rotation of the VR gun model.
-
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 	JumpHeight = 600.f;
-	GetCharacterMovement()->AirControl = 0.5f;
+	RegularAirControl = 0.5f;
+	GetCharacterMovement()->AirControl = RegularAirControl;
 	GetCharacterMovement()->MaxWalkSpeed = 750.0f;
 	//GetCharacterMovement()->MaxAcceleration = 800.0f;
 	CanDash = true;
 	DashDistance = 6000.f;
 	DashCooldown = 2.f;
 	DashStop = 0.1f;
+	MultiJumpMaximum = 2;
+	WallRunAirControl = 1.f;
+	WallRunJumpLaunchMultiplier = 500;
+	WallRunTilt = 15.f;
+	WallRunTiltRate = 0.2f;
 }
 
 void AParkourTimeTrialCharacter::BeginPlay()
@@ -101,18 +81,7 @@ void AParkourTimeTrialCharacter::BeginPlay()
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
-
-	// Show or hide the two versions of the gun based on whether or not we're using motion controllers.
-	if (bUsingMotionControllers)
-	{
-		VR_Gun->SetHiddenInGame(false, true);
-		Mesh1P->SetHiddenInGame(true, true);
-	}
-	else
-	{
-		VR_Gun->SetHiddenInGame(true, true);
-		Mesh1P->SetHiddenInGame(false, true);
-	}
+	Mesh1P->SetHiddenInGame(false, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -131,11 +100,6 @@ void AParkourTimeTrialCharacter::SetupPlayerInputComponent(class UInputComponent
 	PlayerInputComponent->BindAction("Dash", IE_Pressed, this, &AParkourTimeTrialCharacter::Dash);
 	// Bind fire event
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AParkourTimeTrialCharacter::OnFire);
-
-	// Enable touchscreen input
-	EnableTouchscreenMovement(PlayerInputComponent);
-
-	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AParkourTimeTrialCharacter::OnResetVR);
 
 	// Bind movement events
 	PlayerInputComponent->BindAxis("MoveForward", this, &AParkourTimeTrialCharacter::MoveForward);
@@ -158,25 +122,16 @@ void AParkourTimeTrialCharacter::OnFire()
 		UWorld* const World = GetWorld();
 		if (World != NULL)
 		{
-			if (bUsingMotionControllers)
-			{
-				const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
-				const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
-				World->SpawnActor<AParkourTimeTrialProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
-			}
-			else
-			{
-				const FRotator SpawnRotation = GetControlRotation();
-				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+			const FRotator SpawnRotation = GetControlRotation();
+			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+			const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
 
-				//Set Spawn Collision Handling Override
-				FActorSpawnParameters ActorSpawnParams;
-				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+			//Set Spawn Collision Handling Override
+			FActorSpawnParameters ActorSpawnParams;
+			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
-				// spawn the projectile at the muzzle
-				World->SpawnActor<AParkourTimeTrialProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-			}
+			// spawn the projectile at the muzzle
+			World->SpawnActor<AParkourTimeTrialProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
 		}
 	}
 
@@ -197,74 +152,6 @@ void AParkourTimeTrialCharacter::OnFire()
 		}
 	}
 }
-
-void AParkourTimeTrialCharacter::OnResetVR()
-{
-	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
-}
-
-void AParkourTimeTrialCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
-	if (TouchItem.bIsPressed == true)
-	{
-		return;
-	}
-	if ((FingerIndex == TouchItem.FingerIndex) && (TouchItem.bMoved == false))
-	{
-		OnFire();
-	}
-	TouchItem.bIsPressed = true;
-	TouchItem.FingerIndex = FingerIndex;
-	TouchItem.Location = Location;
-	TouchItem.bMoved = false;
-}
-
-void AParkourTimeTrialCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
-	if (TouchItem.bIsPressed == false)
-	{
-		return;
-	}
-	TouchItem.bIsPressed = false;
-}
-
-//Commenting this section out to be consistent with FPS BP template.
-//This allows the user to turn without using the right virtual joystick
-
-//void AParkourTimeTrialCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
-//{
-//	if ((TouchItem.bIsPressed == true) && (TouchItem.FingerIndex == FingerIndex))
-//	{
-//		if (TouchItem.bIsPressed)
-//		{
-//			if (GetWorld() != nullptr)
-//			{
-//				UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
-//				if (ViewportClient != nullptr)
-//				{
-//					FVector MoveDelta = Location - TouchItem.Location;
-//					FVector2D ScreenSize;
-//					ViewportClient->GetViewportSize(ScreenSize);
-//					FVector2D ScaledDelta = FVector2D(MoveDelta.X, MoveDelta.Y) / ScreenSize;
-//					if (FMath::Abs(ScaledDelta.X) >= 4.0 / ScreenSize.X)
-//					{
-//						TouchItem.bMoved = true;
-//						float Value = ScaledDelta.X * BaseTurnRate;
-//						AddControllerYawInput(Value);
-//					}
-//					if (FMath::Abs(ScaledDelta.Y) >= 4.0 / ScreenSize.Y)
-//					{
-//						TouchItem.bMoved = true;
-//						float Value = ScaledDelta.Y * BaseTurnRate;
-//						AddControllerPitchInput(Value);
-//					}
-//					TouchItem.Location = Location;
-//				}
-//				TouchItem.Location = Location;
-//			}
-//		}
-//	}
-//}
 
 void AParkourTimeTrialCharacter::MoveForward(float Value)
 {
@@ -296,32 +183,33 @@ void AParkourTimeTrialCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-bool AParkourTimeTrialCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInputComponent)
-{
-	if (FPlatformMisc::SupportsTouchInput() || GetDefault<UInputSettings>()->bUseMouseForTouch)
-	{
-		PlayerInputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AParkourTimeTrialCharacter::BeginTouch);
-		PlayerInputComponent->BindTouch(EInputEvent::IE_Released, this, &AParkourTimeTrialCharacter::EndTouch);
-
-		//Commenting this out to be more consistent with FPS BP template.
-		//PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &AParkourTimeTrialCharacter::TouchUpdate);
-		return true;
-	}
-	
-	return false;
-}
-
 void AParkourTimeTrialCharacter::Landed(const FHitResult& Hit)
 {
-	DoubleJumpCounter = 0;
+	MultiJumpCounter = 0;
 }
 
 void AParkourTimeTrialCharacter::DoubleJump()
 {
-	if (DoubleJumpCounter <= 1)
+	if (MultiJumpCounter <= MultiJumpMaximum)
 	{
-		LaunchCharacter(FVector(0, 0, JumpHeight), false, true);
-		DoubleJumpCounter++;
+		FVector crossDirection = FVector(0,0,0);
+		if (IsWallRunning)
+		{
+			EndWallRun(EWallRunEndCause::Jump);
+			FVector Z;
+			if (WallRunSide == EWallRunSide::Right)
+			{
+				Z = FVector(0,0,-1);
+			}
+			else
+			{
+				Z = FVector(0, 0, 1);
+			}
+			crossDirection = FVector::CrossProduct(WallRunDirection, Z);
+			crossDirection = crossDirection * WallRunJumpLaunchMultiplier;
+		}
+		LaunchCharacter(FVector(crossDirection.X, crossDirection.Y, JumpHeight), false, true);
+		MultiJumpCounter++;
 	}
 }
 
@@ -332,7 +220,7 @@ void AParkourTimeTrialCharacter::Dash()
 		GetCharacterMovement()->BrakingFrictionFactor = 0.f;
 		LaunchCharacter(GetDirectionForDash() * DashDistance, true, true);
 		CanDash = false;
-		GetWorldTimerManager().SetTimer(UnusedHandle, this, &AParkourTimeTrialCharacter::StopDashing, DashStop, false);
+		GetWorldTimerManager().SetTimer(DashCountdownHandle, this, &AParkourTimeTrialCharacter::StopDashing, DashStop, false);
 	}
 }
 
@@ -340,7 +228,7 @@ void AParkourTimeTrialCharacter::StopDashing()
 {
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->BrakingFrictionFactor = 2.f;
-	GetWorldTimerManager().SetTimer(UnusedHandle, this, &AParkourTimeTrialCharacter::ResetDash, DashCooldown, false);
+	GetWorldTimerManager().SetTimer(DashCountdownHandle, this, &AParkourTimeTrialCharacter::ResetDash, DashCooldown, false);
 }
 
 void AParkourTimeTrialCharacter::ResetDash()
@@ -355,4 +243,133 @@ FVector AParkourTimeTrialCharacter::GetDirectionForDash()
 		return FVector(FirstPersonCameraComponent->GetForwardVector().X, FirstPersonCameraComponent->GetForwardVector().Y, 0).GetSafeNormal();
 	Velocity.Z = 0;
 	return Velocity.GetSafeNormal();
+}
+
+bool AParkourTimeTrialCharacter::IsSurfaceValidForWallRun(FVector surfaceNormal)
+{
+	auto z = surfaceNormal.Z;
+	if (z < -0.05)
+		return false;
+	auto inclineCheckVector =  FVector(surfaceNormal.X, surfaceNormal.Y, 0);
+	inclineCheckVector.Normalize();
+	float dotProduct = FVector::DotProduct(inclineCheckVector, surfaceNormal);
+	float rads = FMath::Acos(dotProduct);
+	float angle = FMath::RadiansToDegrees(rads);
+	auto walkableFloor = GetCharacterMovement()->GetWalkableFloorAngle();
+	return angle < walkableFloor;
+}
+
+void AParkourTimeTrialCharacter::GetWallRunSideAndDirection(FVector surfaceNormal, FVector& Direction, EWallRunSide& Side)
+{
+	auto actorRightVector = GetActorRightVector();
+	auto surfaceNormal2D = FVector2D(surfaceNormal); 
+	auto actorRightVector2D = FVector2D(actorRightVector);
+	auto dotProduct = FVector2D::DotProduct(actorRightVector2D, surfaceNormal2D);
+	FVector Z;
+	if (dotProduct>0)
+	{
+		Side = EWallRunSide::Right;
+		Z = FVector(0,0,1);
+	}
+	else
+	{
+		Side = EWallRunSide::Left;
+		Z = FVector(0, 0, -1);
+	}
+	Direction = FVector::CrossProduct(surfaceNormal, Z);
+}
+
+
+bool AParkourTimeTrialCharacter::CheckKeysAreDown(EWallRunSide Side)
+{
+	auto forwardAxis = GetInputAxisValue("MoveForward");
+	auto rightAxis = GetInputAxisValue("MoveRight");
+	if (forwardAxis > 0.1)
+	{
+		if (Side == EWallRunSide::Right && rightAxis < -0.1)
+			return true;
+
+		if (Side == EWallRunSide::Left && rightAxis > 0.1)
+			return true;
+	}
+	return false;
+}
+
+void AParkourTimeTrialCharacter::PerformRotation()
+{
+	auto lerpResult = FMath::Lerp(CurrentRotation, WallRunTargetRotation, 0.05f);
+	CurrentRotation = lerpResult;
+	auto playerRotation = GetController()->GetControlRotation();
+	playerRotation.Roll = lerpResult;
+	GetController()->SetControlRotation(playerRotation);
+}
+
+void AParkourTimeTrialCharacter::RotateCharacter()
+{
+	if (WallRunSide == EWallRunSide::Left)
+	{
+		if ((IsWallRunning && CurrentRotation > WallRunTargetRotation) || (!IsWallRunning && CurrentRotation<WallRunTargetRotation))
+		{
+			PerformRotation();
+		}
+	}
+	else if (WallRunSide == EWallRunSide::Right)
+	{
+		if ((IsWallRunning && CurrentRotation < WallRunTargetRotation) || (!IsWallRunning && CurrentRotation > WallRunTargetRotation))
+		{
+			PerformRotation();
+		}
+	}
+	else
+	{
+		GetWorld()->GetTimerManager().ClearTimer(CameraTiltHandle);
+	}
+}
+
+void AParkourTimeTrialCharacter::StartCameraRotation()
+{
+	const auto controller = GetController();
+	WallRunBeginRotation = controller->GetControlRotation().Roll;
+	CurrentRotation = WallRunBeginRotation;
+	int Multiplier;
+	if (WallRunSide == EWallRunSide::Right)
+	{
+		Multiplier = 1;
+	}
+	else
+	{
+		Multiplier = -1;
+	}
+	WallRunTargetRotation = CurrentRotation + Multiplier * WallRunTilt;
+	GetWorldTimerManager().SetTimer(CameraTiltHandle, this, &AParkourTimeTrialCharacter::RotateCharacter, 0.01f, true);
+}
+
+void AParkourTimeTrialCharacter::ReverseCameraRotation()
+{
+	CurrentRotation = WallRunTargetRotation;
+	WallRunTargetRotation = WallRunBeginRotation;
+	GetWorldTimerManager().SetTimer(CameraTiltHandle, this, &AParkourTimeTrialCharacter::RotateCharacter, 0.01f, true);
+}
+
+void AParkourTimeTrialCharacter::BeginWallRun()
+{
+	GetCharacterMovement()->AirControl = WallRunAirControl;
+	MultiJumpCounter = 0;
+	GetCharacterMovement()->GravityScale = 0;
+	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 1));//SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
+	IsWallRunning = true;
+	StartCameraRotation();
+}
+
+void AParkourTimeTrialCharacter::EndWallRun(EWallRunEndCause endCause)
+{
+	GetCharacterMovement()->AirControl = RegularAirControl;
+	GetCharacterMovement()->GravityScale = 1;
+	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0, 0, 0));
+	if (endCause == EWallRunEndCause::Fall)
+	{
+		MultiJumpCounter++;
+	}
+	IsWallRunning = false;
+	ReverseCameraRotation();
 }
